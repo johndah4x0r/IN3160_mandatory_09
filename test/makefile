@@ -31,3 +31,5 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 clean::
 	-@rm -f $(TOPLEVEL)
 	-@rm -f e~$(TOPLEVEL).o
+	-@rm -f $(TOPLEVEL).ghw
+	-@rm -rf output/

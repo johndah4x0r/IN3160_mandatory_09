@@ -49,7 +49,6 @@ async def stimuli_generator(dut, img):
             dut.G.value = RGB[1]
             dut.B.value = RGB[2]
             await FallingEdge(dut.clk)
-
     dut.RGB_valid.value = 0
 
 
@@ -69,11 +68,6 @@ async def gray_check(dut):
         CheckR = dut.WR.value.to_unsigned() * dut.R.value.to_unsigned()
         CheckG = dut.WG.value.to_unsigned() * dut.G.value.to_unsigned()
         CheckB = dut.WB.value.to_unsigned() * dut.B.value.to_unsigned()
-
-        # the pipeline is 2+1 stages deep
-        for _ in range(3):
-            await RisingEdge(dut.clk)
-
         if dut.Y_valid.value == True:
             CheckGray = (CheckR + CheckG + CheckB) >> 8
             assert CheckGray == int(
@@ -87,28 +81,17 @@ async def valid_check(dut):
         await ReadOnly()
         data_valid = dut.RGB_valid.value
         await RisingEdge(dut.clk)
-
-        # the pipeline is 2+1 stages deep
-        for _ in range(3):
-            await RisingEdge(dut.clk)
-
         await ReadOnly()
         assert data_valid == dut.Y_valid.value, "Y_valid does not follow RGB_ready"
 
 
 async def monitor(dut):
-    # - we should wait for the pipeline to be filled
-    await RisingEdge(dut.valid)
-
     cocotb.start_soon(overflow_check(dut))
     cocotb.start_soon(gray_check(dut))
     cocotb.start_soon(valid_check(dut))
 
 
 async def grayscale_builder(dut, gray):
-    # - we should wait for the pipeline to be filled
-    await RisingEdge(dut.valid)
-
     for j in range(gray.height):
         for i in range(gray.width):
             await RisingEdge(dut.clk)
@@ -140,11 +123,8 @@ async def main_test(dut):
     cocotb.start_soon(monitor(dut))
     cocotb.start_soon(grayscale_builder(dut, gray))
     await stimuli_generator(dut, img)
-
-    # flush the pipeline
-    for _ in range(3):
-        await RisingEdge(dut.clk)
-
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
     dut._log.info("### Test finished, saving grayscale image ###")
 
     img.close()
